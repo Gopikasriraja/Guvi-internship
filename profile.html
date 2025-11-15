@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GUVI - Profile</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Your profile</h2>
+    <button id="logoutBtn" class="btn btn-outline-secondary">Logout</button>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div id="profileCard" class="card p-4">
+        <div id="profileContent">Loading...</div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card p-4">
+        <h5>Edit profile</h5>
+        <div class="mb-2"><input id="age" class="form-control" placeholder="Age"></div>
+        <div class="mb-2"><input id="dob" class="form-control" placeholder="DOB (YYYY-MM-DD)"></div>
+        <div class="mb-2"><input id="contact" class="form-control" placeholder="Contact"></div>
+        <div class="mb-2"><textarea id="bio" class="form-control" placeholder="Bio"></textarea></div>
+        <button id="saveBtn" class="btn btn-success">Save</button>
+        <div id="saveMsg" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script>
+function getToken(){ return localStorage.getItem('guvi_token'); }
+function ensureAuth(){ if(!getToken()) window.location.href='login.html'; }
+
+$(function(){
+  ensureAuth();
+  const token = getToken();
+
+  $.ajax({
+    url: '/backend/get_profile.php',
+    type: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token },
+    success: function(res){
+      const p = res.profile;
+      $('#profileContent').html(
+        `<h4>${p.user_id ? 'User ID: ' + p.user_id : ''}</h4>
+         <p><strong>Age:</strong> ${p.age ?? ''}</p>
+         <p><strong>DOB:</strong> ${p.dob ?? ''}</p>
+         <p><strong>Contact:</strong> ${p.contact ?? ''}</p>
+         <p><strong>Bio:</strong> ${p.bio ?? ''}</p>`
+      );
+      $('#age').val(p.age ?? '');
+      $('#dob').val(p.dob ?? '');
+      $('#contact').val(p.contact ?? '');
+      $('#bio').val(p.bio ?? '');
+    },
+    error: function(xhr){ $('#profileContent').html('<div class="alert alert-danger">Please login again</div>'); }
+  });
+
+  $('#saveBtn').on('click', function(){
+    const payload = {
+      age: $('#age').val(),
+      dob: $('#dob').val(),
+      contact: $('#contact').val(),
+      bio: $('#bio').val()
+    };
+    $.ajax({
+      url: '/backend/update_profile.php',
+      type: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      contentType: 'application/json',
+      data: JSON.stringify(payload),
+      success: function(res){ $('#saveMsg').html('<div class="alert alert-success">Saved</div>'); },
+      error: function(xhr){ $('#saveMsg').html('<div class="alert alert-danger">'+(xhr.responseJSON?.error||'Error')+'</div>'); }
+    });
+  });
+
+  $('#logoutBtn').on('click', function(){
+    $.ajax({
+      url: '/backend/logout.php',
+      type: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      success: function(){ localStorage.removeItem('guvi_token'); localStorage.removeItem('guvi_user'); window.location.href='login.html'; }
+    });
+  });
+});
+</script>
+</body>
+</html>
